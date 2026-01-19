@@ -1,48 +1,72 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import sqlite3
 
 app = FastAPI()
 
-# 仮のデータ保存場所
-tasks = []
-next_id = 1
+DB_NAME = "tasks.db"
+
+
+def get_db():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
 
 
 class TaskCreate(BaseModel):
     title: str
 
 
-class Task(BaseModel):
-    id: int
-    title: str
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Hello FastAPI"}
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
 
 @app.get("/tasks")
 def get_tasks():
-    return {"tasks": tasks}
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks")
+    rows = cursor.fetchall()
+    conn.close()
+    return {"tasks": [dict(row) for row in rows]}
 
 
 @app.post("/tasks")
 def create_task(task: TaskCreate):
-    global next_id
-    new_task = {
-        "id": next_id,
-        "title": task.title
-    }
-    tasks.append(new_task)
-    next_id += 1
-    return new_task
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO tasks (title) VALUES (?)",
+        (task.title,)
+    )
+    conn.commit()
+    task_id = cursor.lastrowid
+    conn.close()
+    return {"id": task_id, "title": task.title}
 
 
 @app.delete("/tasks/{task_id}")
 def delete_task(task_id: int):
-    for task in tasks:
-        if task["id"] == task_id:
-            tasks.remove(task)
-            return {"message": "task deleted"}
-    raise HTTPException(status_code=404, detail="Task not found")
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Task not found")
+    conn.close()
+    return {"message": "task deleted"}
