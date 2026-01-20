@@ -1,12 +1,27 @@
-## 概要
-FastAPIを用いたシンプルなTODO APIです。
+# FastAPI TODO API
 
-## 実装ステップ
-1. GET /tasks によるタスク一覧取得
-2. POST /tasks によるタスク追加（Pydanticでバリデーション）
-3. タスク管理機能を拡張：ID付与とDELETE エンドポイント実装
-4. SQLiteを用いてタスクを永続化
+## 概要
+FastAPIを用いて作成したシンプルなTODO管理APIです。
+未経験からの学習を目的に、最小構成から段階的に機能追加しました。
+
+## 機能
+- タスク一覧取得（GET /tasks）
+- タスク追加（POST /tasks）
+- タスク削除（DELETE /tasks/{id}）
+- SQLiteによるデータ永続化
 
 ## 技術スタック
 - Python
 - FastAPI
+- SQLite
+- Uvicorn
+
+## 工夫した点
+- 最初はメモリ上で実装し、その後SQLiteに置き換えることで段階的に改善しました
+- Pydanticを用いて入力データのバリデーションを行いました
+- Swagger UIを活用し、APIの動作確認を容易にしました
+
+## 起動方法
+```bash
+pip install fastapi uvicorn
+uvicorn main:app --reload
